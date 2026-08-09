@@ -374,6 +374,24 @@
             weights: []
         };
 
+        // 將當前狀態儲存到瀏覽器的 localStorage
+        function saveState() {
+            localStorage.setItem('gymlingo_data', JSON.stringify(state));
+        }
+
+        // 從 localStorage 讀取儲存的狀態
+        function loadState() {
+            const savedData = localStorage.getItem('gymlingo_data');
+            if (savedData) {
+                try {
+                    // 將讀取到的資料合併到目前的 state 中
+                    state = { ...state, ...JSON.parse(savedData) };
+                } catch (e) {
+                    console.error("讀取存檔失敗", e);
+                }
+            }
+        }
+
         let weightChartInstance = null;
         let currentDateForCalendar = new Date(); // Use actual current date
         let currentChartRange = 'month'; // 'week', 'month', 'year'
@@ -392,6 +410,7 @@
 
         // --- Initialization ---
         document.addEventListener('DOMContentLoaded', () => {
+            loadState(); // 在網頁載入完成時，第一時間讀取存檔
             updateDashboard();
             updateCostInfo();
             initChart();
@@ -718,6 +737,8 @@
                 showAlert('補回成功', '已補回打卡紀錄！總次數已更新。');
             }
             
+            saveState(); // 每次打卡後立即儲存進度
+            
             // UI Updates
             updateDashboard();
             updateCostInfo();
@@ -742,6 +763,8 @@
             
             // Ensure array is sorted by date after retroactive insertions
             state.weights.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            saveState(); // 每次記錄體重後立即儲存進度
 
             // UI Updates
             updateDashboard();
