@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GymLingo - 健身與體重追蹤</title>
+    
+    <!-- Web App 專屬設定 (iOS / Android) -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#ffffff">
+    <!-- App 圖示 (當加入主畫面時顯示的 Icon) -->
+    <link rel="apple-touch-icon" href="https://placehold.co/180x180/58cc02/ffffff?text=Gym">
+    <link href="https://fonts.googleapis.com/css2?family=Varela+Round&display=swap" rel="stylesheet">
+    
+    <!-- 核心樣式庫 (Tailwind CSS) 及 圖示庫 (Font Awesome) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Chart.js for Weight Trend -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            font-family: 'Varela Round', sans-serif;
+            background-color: #ffffff;
+            color: #4b4b4b;
+            /* Prevent pull-to-refresh on mobile */
+            overscroll-behavior-y: none; 
+        }
+
+        /* Mobile Container to simulate App view on desktop */
+        .app-container {
+            max-width: 480px;
+            margin: 0 auto;
+            min-height: 100vh;
+            background-color: #ffffff;
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Duolingo Style Buttons */
+        .btn-duo {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-radius: 16px;
+            padding: 14px 24px;
+            transition: all 0.1s ease;
+            cursor: pointer;
+            user-select: none;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background-color: #58cc02;
+            color: white;
+            box-shadow: 0 4px 0 #58a700;
+        }
+        .btn-primary:active {
+            transform: translateY(4px);
+            box-shadow: 0 0px 0 #58a700;
+        }
+
+        .btn-secondary {
+            background-color: #1cb0f6;
+            color: white;
+            box-shadow: 0 4px 0 #1899d6;
+        }
+        .btn-secondary:active {
+            transform: translateY(4px);
+            box-shadow: 0 0px 0 #1899d6;
+        }
+
+        .btn-outline {
+            background-color: white;
+            color: #afafaf;
+            border: 2px solid #e5e5e5;
+            box-shadow: 0 4px 0 #e5e5e5;
+        }
+        .btn-outline:active {
+            transform: translateY(4px);
+            box-shadow: 0 0px 0 #e5e5e5;
+        }
+
+        /* Disabled Button Style */
+        .btn-disabled {
+            background-color: #e5e5e5;
+            color: #afafaf;
+            box-shadow: 0 4px 0 #d1d1d1;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        /* Card Styles */
+        .duo-card {
+            border: 2px solid #e5e5e5;
+            border-radius: 20px;
+            padding: 20px;
+            background: white;
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            border-top: 2px solid #e5e5e5;
+            background: white;
+            padding-bottom: env(safe-area-inset-bottom); /* For iPhone X+ */
+        }
+        
+        .nav-item {
+            color: #afafaf;
+            transition: color 0.2s;
+        }
+        .nav-item.active {
+            color: #1cb0f6;
+            border-radius: 12px;
+            background-color: #e1f4fe;
+            padding: 8px 16px;
+        }
+
+        /* Modal Background */
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(2px);
+        }
+
+        /* Celebration Animation */
+        @keyframes popIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            80% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop {
+            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        
+        /* Hide scrollbar */
+        ::-webkit-scrollbar {
+            width: 0px;
+            background: transparent;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <div class="app-container">
+        
+        <!-- Top Status Bar -->
+        <div class="flex justify-between items-center px-5 py-4 border-b-2 border-gray-200 sticky top-0 bg-white z-10">
+            <!-- Streak -->
+            <div class="flex items-center space-x-1.5 text-[#ff9600] font-bold text-lg">
+                <i class="fa-solid fa-fire text-xl"></i>
+                <span id="streak-count">3</span>
+            </div>
+            <!-- Total Gym Visits (Gems equivalent) -->
+        <div class="flex items-center space-x-1.5 text-[#1cb0f6] font-bold text-lg">
+            <i class="fa-solid fa-dumbbell text-xl"></i>
+            <span id="total-gym-count">12</span>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div id="tab-home" class="flex-1 overflow-y-auto p-5 pb-24">
+        
+        <!-- Gym History Calendar -->
+        <div class="duo-card mb-8">
+            <div class="flex justify-between items-center mb-4">
+                <button onclick="changeMonth(-1)" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <h3 id="calendar-month-year" class="text-lg font-bold text-gray-700">2026年 8月</h3>
+                <button onclick="changeMonth(1)" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors">
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-7 gap-1 text-center mb-2">
+                <div class="text-xs font-bold text-gray-400 py-1">日</div>
+                <div class="text-xs font-bold text-gray-400 py-1">一</div>
+                <div class="text-xs font-bold text-gray-400 py-1">二</div>
+                <div class="text-xs font-bold text-gray-400 py-1">三</div>
+                <div class="text-xs font-bold text-gray-400 py-1">四</div>
+                <div class="text-xs font-bold text-gray-400 py-1">五</div>
+                <div class="text-xs font-bold text-gray-400 py-1">六</div>
+            </div>
+            <div id="calendar-grid" class="grid grid-cols-7 gap-1 text-center">
+                <!-- Calendar days will be generated by JS -->
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex flex-col space-y-4 mb-8">
+            <button id="btn-log-gym" onclick="logGymVisit()" class="btn-duo btn-primary w-full text-lg py-4">
+                <i class="fa-solid fa-plus-circle mr-2"></i> 打卡做 GYM
+            </button>
+            <button onclick="openWeightModal()" class="btn-duo btn-secondary w-full text-lg py-4">
+                <i class="fa-solid fa-weight-scale mr-2"></i> 記錄最新體重
+            </button>
+        </div>
+
+        <!-- Current Stats Card -->
+        <div class="duo-card flex justify-between items-center mb-6">
+            <div>
+                <h3 class="text-gray-400 font-bold text-sm uppercase">目前體重</h3>
+                <div class="text-3xl font-black text-gray-700 mt-1"><span id="current-weight-display">70.5</span> <span class="text-lg text-gray-400">kg</span></div>
+            </div>
+            <div class="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center text-[#1cb0f6]">
+                <i class="fa-solid fa-chart-line text-xl"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress Tab (Hidden by default) -->
+    <div id="tab-progress" class="flex-1 overflow-y-auto p-5 pb-24 hidden">
+        
+        <!-- Chart Card -->
+        <div class="duo-card mb-6 mt-2">
+            <h3 class="text-gray-400 font-bold text-sm uppercase mb-4">體重紀錄</h3>
+            
+            <!-- Chart Range Toggles -->
+            <div class="flex bg-gray-100 rounded-xl p-1 mb-4">
+                <button onclick="setChartRange('week')" id="btn-range-week" class="flex-1 py-1.5 text-sm font-bold rounded-lg text-gray-400 transition-colors">星期</button>
+                <button onclick="setChartRange('month')" id="btn-range-month" class="flex-1 py-1.5 text-sm font-bold rounded-lg text-gray-400 transition-colors bg-white text-gray-700 shadow-sm">月</button>
+                <button onclick="setChartRange('year')" id="btn-range-year" class="flex-1 py-1.5 text-sm font-bold rounded-lg text-gray-400 transition-colors">年</button>
+            </div>
+
+            <!-- Chart Period Navigation -->
+            <div class="flex justify-between items-center mb-2">
+                <button onclick="changeChartPeriod(-1)" class="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors">
+                    <i class="fa-solid fa-chevron-left text-xs"></i>
+                </button>
+                <h4 id="chart-period-label" class="text-sm font-bold text-gray-600">--</h4>
+                <button onclick="changeChartPeriod(1)" class="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors">
+                    <i class="fa-solid fa-chevron-right text-xs"></i>
+                </button>
+            </div>
+
+            <div class="relative h-64 w-full">
+                <canvas id="weightChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Cost Info Card -->
+        <div class="duo-card mb-6">
+            <h3 class="text-gray-400 font-bold text-sm uppercase mb-4">本月健身成本</h3>
+            <div class="flex justify-between items-end">
+                <div>
+                    <div class="text-3xl font-black text-gray-700">$<span id="cost-per-visit">--</span></div>
+                    <div class="text-sm font-bold text-gray-400">平均每次 (月費 $507)</div>
+                </div>
+                <div class="text-right">
+                    <div class="text-xl font-bold text-[#1cb0f6]"><span id="month-visit-count">0</span> 次</div>
+                    <div class="text-sm font-bold text-gray-400">本月打卡</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav fixed bottom-0 w-full max-w-[480px] flex justify-around items-center py-3 z-10">
+            <button onclick="switchTab('home')" class="nav-item active flex flex-col items-center justify-center w-16" id="nav-home">
+                <i class="fa-solid fa-house text-2xl mb-1"></i>
+            </button>
+            <button onclick="switchTab('progress')" class="nav-item flex flex-col items-center justify-center w-16" id="nav-progress">
+                <i class="fa-solid fa-chart-bar text-2xl mb-1"></i>
+            </button>
+            <button onclick="showComingSoon()" class="nav-item flex flex-col items-center justify-center w-16">
+                <i class="fa-solid fa-user text-2xl mb-1"></i>
+            </button>
+        </div>
+
+        <!-- Add Weight Modal -->
+        <div id="weight-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+            <div class="absolute inset-0 modal-overlay" onclick="closeWeightModal()"></div>
+            <div class="bg-white rounded-3xl p-6 w-full max-w-sm relative z-10 animate-pop border-2 border-gray-200">
+                <div class="text-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-700">記錄體重</h2>
+                    <p class="text-gray-500 font-bold mt-2">你今天多重？</p>
+                </div>
+                
+                <div class="flex items-center justify-center mb-6 space-x-2">
+                    <input type="number" id="weight-input" step="0.1" class="w-32 text-center text-4xl font-black text-gray-700 bg-gray-100 rounded-2xl py-3 focus:outline-none focus:ring-4 focus:ring-blue-200 transition-all" value="70.5">
+                    <span class="text-2xl font-bold text-gray-400">kg</span>
+                </div>
+                
+                <button onclick="saveWeight()" class="btn-duo btn-secondary w-full text-lg">
+                    儲存
+                </button>
+                <button onclick="closeWeightModal()" class="mt-4 w-full text-gray-400 font-bold uppercase tracking-wider py-2">
+                    取消
+                </button>
+            </div>
+        </div>
+
+        <!-- Celebration Modal (For Gym Visit) -->
+        <div id="celebration-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+            <div class="absolute inset-0 modal-overlay"></div>
+            <div class="bg-white rounded-3xl p-6 w-full max-w-sm relative z-10 animate-pop border-2 border-gray-200 text-center">
+                <div class="w-24 h-24 mx-auto bg-orange-100 rounded-full flex items-center justify-center border-4 border-orange-400 mb-4">
+                    <i class="fa-solid fa-fire text-5xl text-[#ff9600]"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-700 mb-2">打卡成功！</h2>
+                <p class="text-[#ff9600] font-bold text-lg mb-6">連續打卡 +1 日！繼續保持！</p>
+                
+                <button onclick="closeCelebration()" class="btn-duo btn-primary w-full text-lg">
+                    太棒了！
+                </button>
+            </div>
+        </div>
+        
+        <!-- Generic Alert Modal -->
+        <div id="alert-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+            <div class="absolute inset-0 modal-overlay" onclick="closeAlert()"></div>
+            <div class="bg-white rounded-3xl p-6 w-full max-w-sm relative z-10 animate-pop border-2 border-gray-200 text-center">
+                <h2 id="alert-title" class="text-xl font-bold text-gray-700 mb-2">提示</h2>
+                <p id="alert-message" class="text-gray-500 font-bold mb-6">訊息內容</p>
+                <button onclick="closeAlert()" class="btn-duo btn-primary w-full text-lg">
+                    確定
+                </button>
+            </div>
+        </div>
+
+        <!-- Day Details Modal (New) -->
+        <div id="day-details-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+            <div class="absolute inset-0 modal-overlay" onclick="closeDayDetailsModal()"></div>
+            <div class="bg-white rounded-3xl p-6 w-full max-w-sm relative z-10 animate-pop border-2 border-gray-200">
+                <div class="text-center mb-6">
+                    <h2 id="day-details-title" class="text-2xl font-bold text-gray-700">日期</h2>
+                </div>
+
+                <!-- Gym Status -->
+                <div class="bg-gray-50 rounded-2xl p-4 mb-4 border-2 border-gray-100">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-gray-500 font-bold">打卡狀態</span>
+                        <span id="day-gym-status" class="font-bold">--</span>
+                    </div>
+                    <button id="btn-retro-gym" onclick="handleRetroGym()" class="btn-duo btn-primary w-full py-2 mt-2 text-sm hidden">
+                        補回打卡
+                    </button>
+                </div>
+
+                <!-- Weight Status -->
+                <div class="bg-gray-50 rounded-2xl p-4 mb-6 border-2 border-gray-100">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-gray-500 font-bold">體重紀錄</span>
+                        <span id="day-weight-status" class="font-bold text-gray-700">-- kg</span>
+                    </div>
+                    <button id="btn-retro-weight" onclick="openWeightModal(true)" class="btn-duo btn-secondary w-full py-2 mt-2 text-sm">
+                        補回/修改體重
+                    </button>
+                </div>
+
+                <button onclick="closeDayDetailsModal()" class="w-full text-gray-400 font-bold uppercase tracking-wider py-2">
+                    關閉
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- State Management ---
+        // Using in-memory state with some dummy data for initial visual appeal
+        let state = {
+            streak: 0,
+            totalGymVisits: 0,
+            gymDates: [],
+            weights: []
+        };
+
+        let weightChartInstance = null;
+        let currentDateForCalendar = new Date(); // Use actual current date
+        let currentChartRange = 'month'; // 'week', 'month', 'year'
+        let chartReferenceDate = new Date(); // New state for chart period navigation
+        
+        let currentSelectedDate = null; // For day details modal
+        let weightEntryDate = null; // For weight input modal
+        
+        const MONTHLY_GYM_FEE = 507;
+
+        // --- Helper Function ---
+        function getLocalTodayString() {
+            const now = new Date();
+            return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        }
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            updateDashboard();
+            updateCostInfo();
+            initChart();
+            renderCalendar();
+        });
+
+        // --- Core Functions ---
+        function updateDashboard() {
+            document.getElementById('streak-count').innerText = state.streak;
+            document.getElementById('total-gym-count').innerText = state.totalGymVisits;
+            
+            const currentWeight = state.weights.length > 0 ? state.weights[state.weights.length - 1].weight : 0;
+            document.getElementById('current-weight-display').innerText = currentWeight.toFixed(1);
+            document.getElementById('weight-input').value = currentWeight.toFixed(1);
+
+            // Update Log Gym Button State
+            const todayStr = getLocalTodayString();
+            const logBtn = document.getElementById('btn-log-gym');
+            
+            if (state.gymDates.includes(todayStr)) {
+                logBtn.className = 'btn-duo btn-disabled w-full text-lg py-4';
+                logBtn.innerHTML = '<i class="fa-solid fa-check-circle mr-2"></i> 已打卡';
+                logBtn.disabled = true;
+            } else {
+                logBtn.className = 'btn-duo btn-primary w-full text-lg py-4';
+                logBtn.innerHTML = '<i class="fa-solid fa-plus-circle mr-2"></i> 打卡做 GYM';
+                logBtn.disabled = false;
+            }
+        }
+        
+        function updateCostInfo() {
+            const now = new Date();
+            const currentMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            
+            // Calculate how many times user went to gym THIS actual month
+            const visitsThisMonth = state.gymDates.filter(date => date.startsWith(currentMonthPrefix)).length;
+            
+            document.getElementById('month-visit-count').innerText = visitsThisMonth;
+            
+            const costSpan = document.getElementById('cost-per-visit');
+            if (visitsThisMonth > 0) {
+                const cost = MONTHLY_GYM_FEE / visitsThisMonth;
+                costSpan.innerText = Number.isInteger(cost) ? cost.toString() : cost.toFixed(1);
+            } else {
+                costSpan.innerText = "--";
+            }
+        }
+
+        function setChartRange(range) {
+            currentChartRange = range;
+            chartReferenceDate = new Date(); // Reset to today when switching ranges
+            
+            // Update Toggle Button Styles
+            ['week', 'month', 'year'].forEach(r => {
+                const btn = document.getElementById(`btn-range-${r}`);
+                if (r === range) {
+                    btn.classList.add('bg-white', 'text-gray-700', 'shadow-sm');
+                    btn.classList.remove('text-gray-400');
+                } else {
+                    btn.classList.remove('bg-white', 'text-gray-700', 'shadow-sm');
+                    btn.classList.add('text-gray-400');
+                }
+            });
+            
+            initChart();
+        }
+
+        function changeChartPeriod(offset) {
+            if (currentChartRange === 'week') {
+                chartReferenceDate.setDate(chartReferenceDate.getDate() + offset * 7);
+            } else if (currentChartRange === 'month') {
+                chartReferenceDate.setMonth(chartReferenceDate.getMonth() + offset);
+            } else if (currentChartRange === 'year') {
+                chartReferenceDate.setFullYear(chartReferenceDate.getFullYear() + offset);
+            }
+            initChart();
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('weightChart').getContext('2d');
+            
+            let labels = [];
+            let data = [];
+            let ptRadius = 5;
+            
+            // Create a quick lookup map for weights { 'YYYY-MM-DD': weight }
+            const weightsMap = new Map();
+            state.weights.forEach(w => weightsMap.set(w.date, w.weight));
+
+            if (currentChartRange === 'week') {
+                ptRadius = 5;
+                const start = new Date(chartReferenceDate);
+                start.setDate(start.getDate() - start.getDay()); // Start on Sunday
+                const end = new Date(start);
+                end.setDate(end.getDate() + 6); // End on Saturday
+                
+                document.getElementById('chart-period-label').innerText = `${start.getFullYear()}年 ${start.getMonth()+1}月${start.getDate()}日 - ${end.getMonth()+1}月${end.getDate()}日`;
+                
+                labels = ['日', '一', '二', '三', '四', '五', '六'];
+                for (let i = 0; i < 7; i++) {
+                    let d = new Date(start);
+                    d.setDate(d.getDate() + i);
+                    let dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                    data.push(weightsMap.has(dateStr) ? weightsMap.get(dateStr) : null);
+                }
+            } else if (currentChartRange === 'month') {
+                ptRadius = 3; // 月視圖稍微縮小點的大小
+                const year = chartReferenceDate.getFullYear();
+                const month = chartReferenceDate.getMonth();
+                document.getElementById('chart-period-label').innerText = `${year}年 ${month+1}月`;
+                
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                
+                // 匯入該月每一天的數據 (像股票圖)
+                for (let i = 1; i <= daysInMonth; i++) {
+                    // 每 7 天顯示一個 Week 標籤，其餘日子為空字串以保持距離
+                    if (i === 1) labels.push('Week 1');
+                    else if (i === 8) labels.push('Week 2');
+                    else if (i === 15) labels.push('Week 3');
+                    else if (i === 22) labels.push('Week 4');
+                    else if (i === 29) labels.push('Week 5');
+                    else labels.push(''); 
+
+                    let dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
+                    data.push(weightsMap.has(dateStr) ? weightsMap.get(dateStr) : null);
+                }
+            } else if (currentChartRange === 'year') {
+                ptRadius = 0; // 年視圖有365個點，隱藏圓點以呈現完美平滑的折線
+                const year = chartReferenceDate.getFullYear();
+                document.getElementById('chart-period-label').innerText = `${year}年`;
+                
+                // 匯入一整年 365 天的每一天數據
+                for (let m = 0; m < 12; m++) {
+                    const daysInM = new Date(year, m + 1, 0).getDate();
+                    for(let day = 1; day <= daysInM; day++) {
+                        // 在每個月的中間 (15號) 放置月份標籤
+                        if (day === 15) { 
+                            labels.push(`${m+1}月`);
+                        } else {
+                            labels.push('');
+                        }
+
+                        let dateStr = `${year}-${String(m+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+                        data.push(weightsMap.has(dateStr) ? weightsMap.get(dateStr) : null);
+                    }
+                }
+            }
+
+            if (weightChartInstance) {
+                weightChartInstance.destroy();
+            }
+
+            weightChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '體重 (kg)',
+                        data: data,
+                        borderColor: '#1cb0f6',
+                        backgroundColor: 'rgba(28, 176, 246, 0.2)',
+                        borderWidth: 4,
+                        pointBackgroundColor: '#ffffff',
+                        pointBorderColor: '#1cb0f6',
+                        pointBorderWidth: 3,
+                        pointRadius: ptRadius,
+                        pointHoverRadius: 7,
+                        pointHitRadius: 20, // 加大觸控範圍，即使看不見點也能輕鬆按出浮動提示
+                        fill: true,
+                        tension: 0.4,
+                        spanGaps: true // 自動將無數據的日子連起，形成股票圖表效果
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#4b4b4b',
+                            titleFont: { family: 'Varela Round' },
+                            bodyFont: { family: 'Varela Round', size: 14, weight: 'bold' },
+                            padding: 10,
+                            displayColors: false,
+                            callbacks: {
+                                // 覆寫 Title 以精準顯示用戶按下的那一日，而非 X 軸上的 Week / 空白
+                                title: function(context) {
+                                    const idx = context[0].dataIndex;
+                                    if (currentChartRange === 'week') {
+                                        const start = new Date(chartReferenceDate);
+                                        start.setDate(start.getDate() - start.getDay() + idx);
+                                        return `${start.getMonth()+1}月${start.getDate()}日`;
+                                    } else if (currentChartRange === 'month') {
+                                        return `${chartReferenceDate.getMonth()+1}月${idx + 1}日`;
+                                    } else if (currentChartRange === 'year') {
+                                        let daysCount = 0;
+                                        for (let m = 0; m < 12; m++) {
+                                            const dInM = new Date(chartReferenceDate.getFullYear(), m + 1, 0).getDate();
+                                            if (idx < daysCount + dInM) {
+                                                return `${m+1}月${idx - daysCount + 1}日`;
+                                            }
+                                            daysCount += dInM;
+                                        }
+                                    }
+                                    return context[0].label;
+                                },
+                                label: function(context) { 
+                                    if(context.parsed.y === null) return '無紀錄';
+                                    return context.parsed.y + ' kg'; 
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            grid: { color: '#e5e5e5', borderDash: [5, 5] },
+                            ticks: { font: { family: 'Varela Round', weight: 'bold' }, color: '#afafaf' },
+                            border: { display: false }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { 
+                                font: { family: 'Varela Round', weight: 'bold' }, 
+                                color: '#afafaf', 
+                                maxRotation: 0,
+                                autoSkip: false // 強制 Chart.js 不會忽略我們精確設定的空字串間距
+                            },
+                            border: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendar-grid');
+            const monthYearLabel = document.getElementById('calendar-month-year');
+            grid.innerHTML = '';
+
+            const year = currentDateForCalendar.getFullYear();
+            const month = currentDateForCalendar.getMonth();
+
+            monthYearLabel.innerText = `${year}年 ${month + 1}月`;
+
+            const firstDayOfMonth = new Date(year, month, 1);
+            const lastDayOfMonth = new Date(year, month + 1, 0);
+            
+            const startingDayOfWeek = firstDayOfMonth.getDay();
+            const totalDaysInMonth = lastDayOfMonth.getDate();
+            
+            let cellCount = 0;
+
+            // Empty cells before 1st of month
+            for (let i = 0; i < startingDayOfWeek; i++) {
+                const emptyCell = document.createElement('div');
+                emptyCell.className = 'py-2 aspect-square border-2 border-transparent';
+                grid.appendChild(emptyCell);
+                cellCount++;
+            }
+
+            // Days of the month
+            for (let i = 1; i <= totalDaysInMonth; i++) {
+                const dayCell = document.createElement('div');
+                const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+                const hasVisited = state.gymDates.includes(dateString);
+
+                // Add border-2 border-transparent to baseline so dimensions perfectly match checked days
+                let cellClasses = 'py-2 rounded-xl text-sm font-bold flex flex-col items-center justify-center relative aspect-square transition-colors cursor-pointer';
+                
+                if (hasVisited) {
+                    cellClasses += ' bg-green-100 text-green-700 border-2 border-green-400';
+                    dayCell.innerHTML = `
+                        <span>${i}</span>
+                        <div class="absolute bottom-1 w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                    `;
+                } else {
+                    cellClasses += ' text-gray-600 hover:bg-gray-50 border-2 border-transparent';
+                    dayCell.innerHTML = `<span>${i}</span>`;
+                }
+
+                // Highlight today
+                const today = new Date();
+                if (year === today.getFullYear() && month === today.getMonth() && i === today.getDate() && !hasVisited) {
+                     cellClasses = cellClasses.replace('border-transparent', 'border-blue-200').replace('hover:bg-gray-50', 'bg-blue-50 text-blue-600');
+                }
+
+                dayCell.className = cellClasses;
+                dayCell.onclick = () => openDayDetailsModal(dateString);
+                grid.appendChild(dayCell);
+                cellCount++;
+            }
+            
+            // Fill remaining cells up to 42 to keep height fixed across all months
+            const remainingCells = 42 - cellCount;
+            for (let i = 0; i < remainingCells; i++) {
+                const emptyCell = document.createElement('div');
+                emptyCell.className = 'py-2 aspect-square border-2 border-transparent';
+                grid.appendChild(emptyCell);
+            }
+        }
+
+        function changeMonth(offset) {
+            currentDateForCalendar.setMonth(currentDateForCalendar.getMonth() + offset);
+            renderCalendar();
+        }
+
+        function logGymVisit(dateToLog = null) {
+            const targetDate = dateToLog || getLocalTodayString();
+            const today = getLocalTodayString();
+            
+            if (state.gymDates.includes(targetDate)) {
+                return; 
+            }
+
+            // Update State
+            state.gymDates.push(targetDate);
+            state.totalGymVisits += 1;
+            
+            // Only increase streak if logging today
+            if (targetDate === today) {
+                state.streak += 1;
+                document.getElementById('celebration-modal').classList.remove('hidden');
+            } else {
+                showAlert('補回成功', '已補回打卡紀錄！總次數已更新。');
+            }
+            
+            // UI Updates
+            updateDashboard();
+            updateCostInfo();
+            renderCalendar();
+        }
+
+        function saveWeight() {
+            const newWeight = parseFloat(document.getElementById('weight-input').value);
+            if (isNaN(newWeight) || newWeight <= 0) {
+                showAlert('錯誤', '請輸入有效的體重數值！');
+                return;
+            }
+
+            const targetDate = weightEntryDate || getLocalTodayString();
+            
+            const existingIndex = state.weights.findIndex(w => w.date === targetDate);
+            if (existingIndex !== -1) {
+                state.weights[existingIndex].weight = newWeight;
+            } else {
+                state.weights.push({ date: targetDate, weight: newWeight });
+            }
+            
+            // Ensure array is sorted by date after retroactive insertions
+            state.weights.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            // UI Updates
+            updateDashboard();
+            initChart(); 
+            closeWeightModal();
+            
+            if (currentSelectedDate && targetDate === currentSelectedDate) {
+                 openDayDetailsModal(currentSelectedDate); // Refresh day details if opened
+            } else {
+                 showAlert('記錄成功', '你的體重已更新！');
+            }
+        }
+
+        // --- UI & Modal Controls ---
+        function switchTab(tabId) {
+            // Hide all tabs
+            document.getElementById('tab-home').classList.add('hidden');
+            document.getElementById('tab-progress').classList.add('hidden');
+            
+            // Remove active state from nav
+            document.getElementById('nav-home').classList.remove('active');
+            document.getElementById('nav-progress').classList.remove('active');
+            
+            // Show selected tab
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+            document.getElementById(`nav-${tabId}`).classList.add('active');
+            
+            // Re-render chart if progress tab is shown to fix canvas sizing issues
+            if(tabId === 'progress') {
+                initChart();
+            }
+        }
+
+        function openWeightModal(isRetro = false) {
+            weightEntryDate = isRetro ? currentSelectedDate : getLocalTodayString();
+            
+            // Update title text
+            document.querySelector('#weight-modal p').innerText = isRetro ? `記錄 ${weightEntryDate} 的體重` : '你今天多重？';
+            
+            // Pre-fill existing weight if any
+            const existingEntry = state.weights.find(w => w.date === weightEntryDate);
+            if (existingEntry) {
+                document.getElementById('weight-input').value = existingEntry.weight;
+            } else {
+                const lastWeight = state.weights.length > 0 ? state.weights[state.weights.length - 1].weight : 70.5;
+                document.getElementById('weight-input').value = lastWeight;
+            }
+            
+            if (isRetro) closeDayDetailsModal();
+            document.getElementById('weight-modal').classList.remove('hidden');
+        }
+
+        function closeWeightModal() {
+            document.getElementById('weight-modal').classList.add('hidden');
+        }
+        
+        function openDayDetailsModal(dateString) {
+            currentSelectedDate = dateString;
+            const d = new Date(dateString);
+            document.getElementById('day-details-title').innerText = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`;
+
+            // Setup Gym Status
+            const hasVisited = state.gymDates.includes(dateString);
+            const gymStatusEl = document.getElementById('day-gym-status');
+            const retroGymBtn = document.getElementById('btn-retro-gym');
+
+            if (hasVisited) {
+                gymStatusEl.innerHTML = '<i class="fa-solid fa-check-circle text-green-500"></i> 已打卡';
+                gymStatusEl.className = 'font-bold text-green-500';
+                retroGymBtn.classList.add('hidden');
+            } else {
+                gymStatusEl.innerHTML = '<i class="fa-solid fa-times-circle"></i> 未打卡';
+                gymStatusEl.className = 'font-bold text-gray-400';
+                retroGymBtn.classList.remove('hidden');
+            }
+
+            // Setup Weight Status
+            const weightEntry = state.weights.find(w => w.date === dateString);
+            const weightStatusEl = document.getElementById('day-weight-status');
+            
+            if (weightEntry) {
+                weightStatusEl.innerText = `${weightEntry.weight} kg`;
+            } else {
+                weightStatusEl.innerText = '-- kg';
+            }
+
+            document.getElementById('day-details-modal').classList.remove('hidden');
+        }
+
+        function handleRetroGym() {
+            logGymVisit(currentSelectedDate);
+            openDayDetailsModal(currentSelectedDate); // refresh modal data
+        }
+
+        function closeDayDetailsModal() {
+            document.getElementById('day-details-modal').classList.add('hidden');
+        }
+
+        function closeCelebration() {
+            document.getElementById('celebration-modal').classList.add('hidden');
+        }
+        
+        function showComingSoon() {
+            showAlert('個人檔案', '個人檔案及雲端同步功能即將推出，敬請期待！');
+        }
+
+        function showAlert(title, message) {
+            document.getElementById('alert-title').innerText = title;
+            document.getElementById('alert-message').innerText = message;
+            document.getElementById('alert-modal').classList.remove('hidden');
+        }
+
+        function closeAlert() {
+            document.getElementById('alert-modal').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
