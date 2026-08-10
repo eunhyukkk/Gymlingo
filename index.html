@@ -95,6 +95,700 @@
 
     <!-- Bottom Navigation -->
     <div class="fixed bottom-0 w-full bg-white border-t-2 border-gray-100 flex justify-around py-3 pb-6 z-10">
+        <button onclick="switchTab('home')" id="nav-home" class="nav-btn active flex flex-col items-center w-1/3 text-gray-400">
+            <i class="fas fa-home text-2xl mb-1"></i><span class="text-xs font-bold">主頁</span>
+        </button>
+        <button onclick="switchTab('progress')" id="nav-progress" class="nav-btn flex flex-col items-center w-1/3 text-gray-400">
+            <i class="fas fa-chart-line text-2xl mb-1"></i><span class="text-xs font-bold">紀錄</span>
+        </button>
+        <button onclick="openSettingsModal()" class="nav-btn flex flex-col items-center w-1/3 text-gray-400 hover:text-gray-600 transition-colors">
+            <i class="fas fa-cog text-2xl mb-1"></i><span class="text-xs font-bold">設定</span>
+        </button>
+    </div>
+
+    <!-- Day Info Modal -->
+    <div id="day-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+        <div class="bg-white rounded-2xl p-6 w-11/12 max-w-sm">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="modal-date-title" class="text-lg font-bold text-gray-800"></h3>
+                <button onclick="closeModal()" class="text-gray-400"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            
+            <div id="modal-punch-section" class="mb-5">
+                <p class="text-sm text-gray-500 mb-2 font-bold">打卡狀態</p>
+                <div id="modal-punch-status" class="flex justify-between items-center w-full font-bold text-lg"></div>
+                <button id="retro-punch-btn" onclick="retroPunch()" class="mt-3 w-full py-3 rounded-xl font-bold text-white bg-green-400 hidden" style="box-shadow: 0 4px 0 #2bba59;">補回打卡紀錄</button>
+            </div>
+
+            <hr id="modal-divider" class="border-gray-100 mb-5">
+
+            <div>
+                <p class="text-sm text-gray-500 mb-2 font-bold">體重紀錄</p>
+                <div class="flex gap-2">
+                    <input type="number" id="retro-weight-input" step="0.1" placeholder="輸入體重 (kg)" class="flex-1 bg-gray-100 border-2 border-gray-200 rounded-xl px-4 py-2 font-bold focus:outline-none focus:border-blue-400">
+                    <button onclick="saveRetroWeight()" class="px-5 rounded-xl font-bold text-white bg-blue-400" style="box-shadow: 0 4px 0 #209ce2;">儲存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monthly Fee Modal -->
+    <div id="fee-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+        <div class="bg-white rounded-2xl p-6 w-11/12 max-w-sm">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">設定每月健身月費</h3>
+            <div class="mb-5">
+                <label class="block text-sm text-gray-600 mb-2 font-bold">月費金額 ($)</label>
+                <input type="number" id="monthly-fee-input" class="w-full bg-gray-100 border-2 border-gray-200 rounded-xl px-4 py-3 font-bold focus:outline-none focus:border-green-400" placeholder="例如: 507">
+            </div>
+            <div class="flex gap-3">
+                <button onclick="closeFeeModal()" class="flex-1 py-3 rounded-xl font-bold text-gray-500 bg-gray-100">取消</button>
+                <button onclick="saveFee()" class="flex-1 py-3 rounded-xl font-bold text-white bg-green-400" style="box-shadow: 0 4px 0 #2bba59;">儲存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings & Backup Modal -->
+    <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+        <div class="bg-white rounded-2xl p-6 w-11/12 max-w-sm">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-gray-800">設定與備份</h3>
+                <button onclick="closeSettingsModal()" class="text-gray-400"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            
+            <p class="text-xs text-gray-500 mb-4 font-bold">系統更新或更換手機時，可透過以下代碼保留紀錄。</p>
+
+            <div class="mb-5">
+                <p class="text-sm text-gray-700 font-bold mb-2">1. 備份資料 (匯出)</p>
+                <button onclick="copyBackup()" class="w-full py-3 rounded-xl font-bold text-white bg-blue-500 flex items-center justify-center gap-2" style="box-shadow: 0 4px 0 #3b82f6;">
+                    <i class="fas fa-copy"></i> 複製備份代碼
+                </button>
+            </div>
+
+            <hr class="border-gray-100 mb-5">
+
+            <div>
+                <p class="text-sm text-gray-700 font-bold mb-2">2. 還原資料 (匯入)</p>
+                <textarea id="restore-input" rows="3" class="w-full bg-gray-100 border-2 border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-600 focus:outline-none focus:border-green-400 mb-3" placeholder="在此貼上備份代碼..."></textarea>
+                <button onclick="restoreBackup()" class="w-full py-3 rounded-xl font-bold text-white bg-green-500 flex items-center justify-center gap-2" style="box-shadow: 0 4px 0 #2bba59;">
+                    <i class="fas fa-download"></i> 還原紀錄
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification (新增的浮動提示) -->
+    <div id="toast" class="fixed top-20 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-full shadow-lg font-bold text-sm transition-opacity duration-300 opacity-0 pointer-events-none z-50"></div>
+
+    <script>
+        // State Management
+        let state = {
+            streak: 0,
+            totalWorkouts: 0,
+            gymDates: [], 
+            weightData: [], 
+            monthlyFee: 507
+        };
+
+        let currentCalDate = new Date();
+        let selectedDateStr = "";
+        let chartView = 'week'; 
+        let currentChartDate = new Date();
+
+        function saveState() {
+            localStorage.setItem('gymState', JSON.stringify(state));
+        }
+
+        function loadState() {
+            const saved = localStorage.getItem('gymState');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                state = { ...state, ...parsed };
+                // 確保如果有舊版本沒有 monthlyFee，會預設為 507
+                if(state.monthlyFee === undefined) state.monthlyFee = 507;
+            }
+            updateUI();
+        }
+
+        function getTodayStr() {
+            const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+            return (new Date(Date.now() - tzoffset)).toISOString().split('T')[0];
+        }
+
+        // --- Core UI Updates ---
+        function updateUI() {
+            document.getElementById('streak-count').textContent = state.streak;
+            document.getElementById('total-count').textContent = state.totalWorkouts;
+            
+            const todayStr = getTodayStr();
+            const punchBtn = document.getElementById('punch-btn');
+            
+            if (state.gymDates.includes(todayStr)) {
+                punchBtn.innerHTML = '<i class="fas fa-check-circle"></i> 已打卡';
+                punchBtn.className = 'w-full bg-gray-300 text-gray-500 font-black text-xl py-4 rounded-2xl flex items-center justify-center gap-2 pointer-events-none cursor-not-allowed';
+                punchBtn.style.boxShadow = 'none';
+                punchBtn.style.transform = 'translateY(4px)';
+            } else {
+                punchBtn.innerHTML = '<i class="fas fa-dumbbell"></i> 打卡做 GYM';
+                punchBtn.className = 'duo-btn w-full bg-green-400 text-white font-black text-xl py-4 rounded-2xl flex items-center justify-center gap-2 cursor-pointer pointer-events-auto';
+                punchBtn.style.boxShadow = '0 4px 0 #2bba59';
+                punchBtn.style.transform = 'none';
+            }
+
+            renderCalendar();
+            renderCost();
+        }
+
+        function punchIn() {
+            const todayStr = getTodayStr();
+            if (!state.gymDates.includes(todayStr)) {
+                state.gymDates.push(todayStr);
+                state.totalWorkouts++;
+                state.streak++;
+                saveState();
+                updateUI();
+            }
+        }
+
+        // --- Calendar Logic ---
+        function renderCalendar() {
+            const monthYear = document.getElementById('calendar-month-year');
+            const daysContainer = document.getElementById('calendar-days');
+            
+            const year = currentCalDate.getFullYear();
+            const month = currentCalDate.getMonth();
+            
+            monthYear.textContent = `${year}年 ${month + 1}月`;
+            daysContainer.innerHTML = '';
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            
+            // 填補月初空白
+            for (let i = 0; i < firstDay; i++) {
+                daysContainer.innerHTML += `<div class="calendar-cell"></div>`;
+            }
+
+            const todayStr = getTodayStr();
+
+            for (let i = 1; i <= daysInMonth; i++) {
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+                const hasGym = state.gymDates.includes(dateStr);
+                const isToday = (dateStr === todayStr);
+                const isFuture = (dateStr > todayStr);
+                
+                let cellStyle = `transition-colors`;
+                let innerStyle = ``;
+                
+                if (isFuture) {
+                    cellStyle += ` cursor-not-allowed text-gray-300 bg-gray-50 opacity-60`;
+                } else {
+                    cellStyle += ` cursor-pointer active:bg-gray-100 hover:bg-gray-50 text-gray-700`;
+                }
+                
+                if (hasGym) {
+                    cellStyle = cellStyle.replace('text-gray-700', '') + ` bg-green-50 border-green-400 text-green-600`;
+                    innerStyle = `<div class="w-1.5 h-1.5 rounded-full bg-green-400 mt-0.5"></div>`;
+                } else if (isToday) {
+                    cellStyle = cellStyle.replace('text-gray-700', '') + ` border-blue-400 bg-blue-50 text-blue-600`;
+                }
+
+                daysContainer.innerHTML += `
+                    <div class="calendar-cell ${cellStyle}" onclick="handleCalendarClick('${dateStr}', ${isFuture})">
+                        <span>${i}</span>
+                        ${innerStyle}
+                    </div>
+                `;
+            }
+
+            // 固定顯示 6 行 (42格) 保持高度一致
+            const totalCells = firstDay + daysInMonth;
+            for (let i = totalCells; i < 42; i++) {
+                daysContainer.innerHTML += `<div class="calendar-cell"></div>`;
+            }
+        }
+
+        function changeMonth(delta) {
+            currentCalDate.setMonth(currentCalDate.getMonth() + delta);
+            renderCalendar();
+        }
+
+        // --- Utils & Interactions ---
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.remove('opacity-0');
+            setTimeout(() => toast.classList.add('opacity-0'), 2000);
+        }
+
+        function handleCalendarClick(dateStr, isFuture) {
+            if (isFuture) {
+                showToast('無法記錄未來的日期喔！');
+                return;
+            }
+            openDayModal(dateStr);
+        }
+
+        // --- Day Modal Logic ---
+        function openDayModal(dateStr) {
+            selectedDateStr = dateStr;
+            document.getElementById('modal-date-title').textContent = dateStr;
+            
+            // 恢復顯示打卡狀態區塊 (因可能被快速體重按鈕隱藏)
+            document.getElementById('modal-punch-section').classList.remove('hidden');
+            document.getElementById('modal-divider').classList.remove('hidden');
+
+            const hasGym = state.gymDates.includes(dateStr);
+            const statusDiv = document.getElementById('modal-punch-status');
+            const retroBtn = document.getElementById('retro-punch-btn');
+            
+            if (hasGym) {
+                statusDiv.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-check-circle text-green-500"></i>
+                        <span class="text-green-500">已打卡</span>
+                    </div>
+                    <button onclick="undoPunch('${dateStr}')" class="text-red-400 hover:text-red-600 p-2 flex items-center transition-colors">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                `;
+                retroBtn.classList.add('hidden');
+            } else {
+                statusDiv.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-times-circle text-gray-400"></i> 
+                        <span class="text-gray-500">未打卡</span>
+                    </div>
+                `;
+                if(dateStr <= getTodayStr()) {
+                    retroBtn.classList.remove('hidden');
+                } else {
+                    retroBtn.classList.add('hidden');
+                }
+            }
+
+            const weightEntry = state.weightData.find(w => w.date === dateStr);
+            document.getElementById('retro-weight-input').value = weightEntry ? weightEntry.weight : '';
+
+            document.getElementById('day-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('day-modal').classList.add('hidden');
+        }
+
+        function undoPunch(dateStr) {
+            const idx = state.gymDates.indexOf(dateStr);
+            if (idx !== -1) {
+                state.gymDates.splice(idx, 1);
+                state.totalWorkouts = Math.max(0, state.totalWorkouts - 1);
+                
+                // 如果取消的是今天的打卡，同時扣除連續日數
+                if (dateStr === getTodayStr()) {
+                    state.streak = Math.max(0, state.streak - 1);
+                }
+                
+                saveState();
+                updateUI();
+                openDayModal(dateStr); 
+                showToast('已取消該日打卡');
+            }
+        }
+
+        function openQuickWeightModal() {
+            selectedDateStr = getTodayStr();
+            document.getElementById('modal-date-title').textContent = "記錄今日體重";
+            
+            document.getElementById('modal-punch-section').classList.add('hidden');
+            document.getElementById('modal-divider').classList.add('hidden');
+
+            const weightEntry = state.weightData.find(w => w.date === selectedDateStr);
+            document.getElementById('retro-weight-input').value = weightEntry ? weightEntry.weight : '';
+
+            document.getElementById('day-modal').classList.remove('hidden');
+        }
+
+        function retroPunch() {
+            if (!state.gymDates.includes(selectedDateStr)) {
+                state.gymDates.push(selectedDateStr);
+                state.totalWorkouts++; // 補回只加總次數不加streak
+                saveState();
+                updateUI();
+                openDayModal(selectedDateStr); 
+            }
+        }
+
+        function saveRetroWeight() {
+            const wStr = document.getElementById('retro-weight-input').value;
+            if (wStr) {
+                const weight = parseFloat(wStr);
+                const idx = state.weightData.findIndex(w => w.date === selectedDateStr);
+                if (idx !== -1) {
+                    state.weightData[idx].weight = weight;
+                } else {
+                    state.weightData.push({ date: selectedDateStr, weight: weight });
+                }
+                // 按日期排序
+                state.weightData.sort((a, b) => new Date(a.date) - new Date(b.date));
+                saveState();
+                renderWeightChart();
+                closeModal();
+                showToast('體重紀錄已儲存！'); // 加入提示框，讓儲存後有清晰的反饋
+            }
+        }
+
+        // --- Settings & Backup Logic ---
+        function openSettingsModal() {
+            document.getElementById('restore-input').value = '';
+            document.getElementById('settings-modal').classList.remove('hidden');
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('settings-modal').classList.add('hidden');
+        }
+
+        function copyBackup() {
+            const backupStr = btoa(encodeURIComponent(JSON.stringify(state)));
+            
+            try {
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(backupStr);
+                } else {
+                    let textArea = document.createElement("textarea");
+                    textArea.value = backupStr;
+                    textArea.style.position = "fixed";
+                    textArea.style.left = "-999999px";
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    document.execCommand('copy');
+                    textArea.remove();
+                }
+                showToast('備份代碼已複製！請貼到備忘錄保存。');
+            } catch (err) {
+                showToast('複製失敗，請手動複製代碼。');
+            }
+        }
+
+        function restoreBackup() {
+            const input = document.getElementById('restore-input').value.trim();
+            if (!input) {
+                showToast('請先貼上備份代碼！');
+                return;
+            }
+            try {
+                const parsed = JSON.parse(decodeURIComponent(atob(input)));
+                if (parsed && typeof parsed === 'object') {
+                    state = { ...state, ...parsed };
+                    saveState();
+                    updateUI();
+                    if(chartView) renderWeightChart();
+                    closeSettingsModal();
+                    showToast('紀錄還原成功！');
+                }
+            } catch(e) {
+                showToast('代碼無效，請檢查是否複製完整！');
+            }
+        }
+
+        // --- Cost & Settings Logic ---
+        function openFeeModal() {
+            document.getElementById('monthly-fee-input').value = state.monthlyFee;
+            document.getElementById('fee-modal').classList.remove('hidden');
+        }
+
+        function closeFeeModal() {
+            document.getElementById('fee-modal').classList.add('hidden');
+        }
+
+        function saveFee() {
+            const inputVal = parseFloat(document.getElementById('monthly-fee-input').value);
+            if (!isNaN(inputVal) && inputVal >= 0) {
+                state.monthlyFee = inputVal;
+                saveState();
+                renderCost();
+            }
+            closeFeeModal();
+        }
+
+        function renderCost() {
+            const now = new Date();
+            const currentMonth = now.getMonth();
+            const currentYear = now.getFullYear();
+
+            const monthCheckIns = state.gymDates.filter(dateString => {
+                const d = new Date(dateString);
+                return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+            }).length;
+
+            const costPerVisit = monthCheckIns > 0 ? Math.round(state.monthlyFee / monthCheckIns) : 0;
+            
+            document.getElementById('cost-per-visit').textContent = `$${costPerVisit}`;
+            document.getElementById('cost-details').textContent = `月費 $${state.monthlyFee} / 本月 ${monthCheckIns} 次`;
+
+            renderCostChart();
+        }
+
+        function renderCostChart() {
+            const ctx = document.getElementById('costChart').getContext('2d');
+            const currentYear = new Date().getFullYear();
+
+            // 統計今年 1-12 月的打卡次數
+            const monthCounts = new Array(12).fill(0);
+            state.gymDates.forEach(dateStr => {
+                const d = new Date(dateStr);
+                if (d.getFullYear() === currentYear) {
+                    monthCounts[d.getMonth()]++;
+                }
+            });
+
+            // 計算各月平均成本
+            const costData = monthCounts.map(count => {
+                if (count === 0) return 0; // 若無打卡顯示為 0
+                return Math.round(state.monthlyFee / count);
+            });
+
+            if (window.costChartInstance) {
+                window.costChartInstance.destroy();
+            }
+
+            window.costChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
+                    datasets: [{
+                        label: '平均每次成本',
+                        data: costData,
+                        borderColor: '#A855F7', // 紫色系
+                        backgroundColor: 'rgba(168, 85, 247, 0.2)',
+                        borderWidth: 3,
+                        pointBackgroundColor: '#A855F7',
+                        pointRadius: 4,
+                        tension: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const index = context.dataIndex;
+                                    const count = monthCounts[index];
+                                    if (count === 0) return `本月打卡: 0 次`;
+                                    return [
+                                        `平均成本: $${context.raw}`,
+                                        `打卡次數: ${count} 次`
+                                    ];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: { beginAtZero: true },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        // --- Weight Chart Logic ---
+        function setChartView(view) {
+            chartView = view;
+            currentChartDate = new Date();
+            
+            ['week', 'month', 'year'].forEach(v => {
+                const btn = document.getElementById(`btn-view-${v}`);
+                if(v === view) {
+                    btn.classList.add('bg-white', 'text-blue-500', 'shadow-sm');
+                    btn.classList.remove('text-gray-500');
+                } else {
+                    btn.classList.remove('bg-white', 'text-blue-500', 'shadow-sm');
+                    btn.classList.add('text-gray-500');
+                }
+            });
+            renderWeightChart();
+        }
+
+        function changeChartPeriod(delta) {
+            if(chartView === 'week') currentChartDate.setDate(currentChartDate.getDate() + (delta * 7));
+            if(chartView === 'month') currentChartDate.setMonth(currentChartDate.getMonth() + delta);
+            if(chartView === 'year') currentChartDate.setFullYear(currentChartDate.getFullYear() + delta);
+            renderWeightChart();
+        }
+
+        function getWeightForDate(dateStr) {
+            const entry = state.weightData.find(w => w.date === dateStr);
+            return entry ? entry.weight : null;
+        }
+
+        function renderWeightChart() {
+            const ctx = document.getElementById('weightChart').getContext('2d');
+            const labelEl = document.getElementById('chart-period-label');
+            
+            let labels = [];
+            let displayLabels = [];
+            let data = [];
+            let actualDates = [];
+
+            const year = currentChartDate.getFullYear();
+            const month = currentChartDate.getMonth();
+            const d = currentChartDate.getDate();
+
+            if (chartView === 'week') {
+                const dayOfWeek = currentChartDate.getDay();
+                const startOfWeek = new Date(currentChartDate);
+                startOfWeek.setDate(d - dayOfWeek);
+                
+                labelEl.textContent = `${startOfWeek.getMonth()+1}月${startOfWeek.getDate()}日 - ${new Date(startOfWeek.getTime() + 6*86400000).getMonth()+1}月${new Date(startOfWeek.getTime() + 6*86400000).getDate()}日`;
+                displayLabels = ['日', '一', '二', '三', '四', '五', '六'];
+                
+                for(let i = 0; i < 7; i++) {
+                    const current = new Date(startOfWeek);
+                    current.setDate(startOfWeek.getDate() + i);
+                    const dateStr = current.toISOString().split('T')[0];
+                    actualDates.push(dateStr);
+                    data.push(getWeightForDate(dateStr));
+                }
+                labels = displayLabels;
+            } 
+            else if (chartView === 'month') {
+                labelEl.textContent = `${year}年 ${month + 1}月`;
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                
+                for(let i = 1; i <= daysInMonth; i++) {
+                    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+                    actualDates.push(dateStr);
+                    data.push(getWeightForDate(dateStr));
+                    
+                    if (i === 1) labels.push('Week1');
+                    else if (i === 8) labels.push('Week2');
+                    else if (i === 15) labels.push('Week3');
+                    else if (i === 22) labels.push('Week4');
+                    else if (i === 29) labels.push('Week5');
+                    else labels.push('');
+                }
+            } 
+            else if (chartView === 'year') {
+                labelEl.textContent = `${year}年`;
+                const isLeap = (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+                const daysInYear = isLeap ? 366 : 365;
+                const startOfYear = new Date(year, 0, 1);
+                
+                for(let i = 0; i < daysInYear; i++) {
+                    const current = new Date(startOfYear);
+                    current.setDate(startOfYear.getDate() + i);
+                    const dateStr = current.toISOString().split('T')[0];
+                    actualDates.push(dateStr);
+                    data.push(getWeightForDate(dateStr));
+                    
+                    // 改為只在單數月份 (1, 3, 5, 7, 9, 11) 的 15 號顯示標籤，避免太擠
+                    if (current.getDate() === 15 && current.getMonth() % 2 === 0) {
+                        labels.push(`${current.getMonth() + 1}月`);
+                    } else {
+                        labels.push('');
+                    }
+                }
+            }
+
+            if (window.weightChartInstance) {
+                window.weightChartInstance.destroy();
+            }
+
+            window.weightChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '體重 (kg)',
+                        data: data,
+                        borderColor: '#3B82F6',
+                        borderWidth: 3,
+                        pointBackgroundColor: '#3B82F6',
+                        pointRadius: chartView === 'week' ? 4 : 0, 
+                        pointHoverRadius: 6,
+                        spanGaps: true, 
+                        tension: 0.2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                title: function(context) {
+                                    const idx = context[0].dataIndex;
+                                    return actualDates[idx];
+                                },
+                                label: function(context) {
+                                    if(context.raw === null) return '無紀錄';
+                                    return `${context.raw} kg`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { 
+                            grid: { display: false },
+                            ticks: { maxRotation: 0, autoSkip: false }
+                        },
+                        y: { 
+                            grid: { color: '#f3f4f6' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- Tabs ---
+        function switchTab(tabId) {
+            document.getElementById('tab-home').classList.add('hidden');
+            document.getElementById('tab-progress').classList.add('hidden');
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+            
+            document.getElementById('nav-home').classList.remove('active', 'text-green-500');
+            document.getElementById('nav-progress').classList.remove('active', 'text-green-500');
+            document.getElementById(`nav-${tabId}`).classList.add('active', 'text-green-500');
+
+            if (tabId === 'progress') {
+                renderWeightChart();
+                renderCostChart();
+            }
+        }
+
+        // Init
+        loadState();
+        setChartView('week');
+
+    </script>
+</body>
+</html>                <canvas id="weightChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Cost Section -->
+        <div class="bg-white rounded-2xl p-5 shadow-sm border-2 border-gray-100 relative mb-6">
+            <h3 class="text-gray-500 text-sm font-bold mb-2">本月健身成本</h3>
+            <button onclick="openFeeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-1">
+                <i class="fas fa-cog text-xl"></i>
+            </button>
+            <div class="text-3xl font-black text-gray-800" id="cost-per-visit">$0</div>
+            <p class="text-xs text-gray-400 mt-1" id="cost-details"></p>
+
+            <h4 class="text-gray-500 text-sm font-bold mt-6 mb-2">過往健身成本紀錄</h4>
+            <div class="h-48 w-full">
+                <canvas id="costChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <div class="fixed bottom-0 w-full bg-white border-t-2 border-gray-100 flex justify-around py-3 pb-6 z-10">
         <button onclick="switchTab('home')" id="nav-home" class="nav-btn active flex flex-col items-center w-1/2 text-gray-400">
             <i class="fas fa-home text-2xl mb-1"></i><span class="text-xs font-bold">主頁</span>
         </button>
