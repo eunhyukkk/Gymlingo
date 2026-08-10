@@ -124,9 +124,9 @@
 
             <div>
                 <p class="text-sm text-gray-500 mb-2 font-bold">體重紀錄</p>
-                <div class="flex gap-2">
-                    <input type="number" id="retro-weight-input" step="0.1" placeholder="輸入體重 (kg)" class="flex-1 bg-gray-100 border-2 border-gray-200 rounded-xl px-4 py-2 font-bold focus:outline-none focus:border-blue-400">
-                    <button onclick="saveRetroWeight()" class="px-5 rounded-xl font-bold text-white bg-blue-400" style="box-shadow: 0 4px 0 #209ce2;">儲存</button>
+                <div class="flex flex-col gap-3 pb-2">
+                    <input type="number" id="retro-weight-input" step="0.1" placeholder="輸入體重 (kg)" class="w-full bg-gray-100 border-2 border-gray-200 rounded-xl px-4 py-3 font-bold focus:outline-none focus:border-blue-400">
+                    <button onclick="saveRetroWeight()" class="duo-btn w-full py-3 rounded-xl font-bold text-white bg-blue-400" style="box-shadow: 0 4px 0 #209ce2;">儲存體重</button>
                 </div>
             </div>
         </div>
@@ -140,9 +140,9 @@
                 <label class="block text-sm text-gray-600 mb-2 font-bold">月費金額 ($)</label>
                 <input type="number" id="monthly-fee-input" class="w-full bg-gray-100 border-2 border-gray-200 rounded-xl px-4 py-3 font-bold focus:outline-none focus:border-green-400" placeholder="例如: 507">
             </div>
-            <div class="flex gap-3">
-                <button onclick="closeFeeModal()" class="flex-1 py-3 rounded-xl font-bold text-gray-500 bg-gray-100">取消</button>
-                <button onclick="saveFee()" class="flex-1 py-3 rounded-xl font-bold text-white bg-green-400" style="box-shadow: 0 4px 0 #2bba59;">儲存</button>
+            <div class="flex gap-3 pb-2">
+                <button onclick="closeFeeModal()" class="duo-btn flex-1 py-3 rounded-xl font-bold text-gray-500 bg-gray-100" style="box-shadow: 0 4px 0 #d1d5db;">取消</button>
+                <button onclick="saveFee()" class="duo-btn flex-1 py-3 rounded-xl font-bold text-white bg-green-400" style="box-shadow: 0 4px 0 #2bba59;">儲存</button>
             </div>
         </div>
     </div>
